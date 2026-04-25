@@ -25,6 +25,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Prepare published app
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('index.html')
+          html = path.read_text(encoding='utf-8')
+          html = re.sub(
+              r"function esc\(v\)\{.*?\}function attr",
+              "function esc(v){let d=document.createElement('div');d.textContent=v||'';return d.innerHTML}function attr",
+              html,
+              count=1,
+          )
+          path.write_text(html, encoding='utf-8')
+          PY
+
+      - name: Validate app script
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const html = fs.readFileSync('index.html', 'utf8');
+          const match = html.match(/<script>([\s\S]*)<\/script>/);
+          if (!match) throw new Error('App script was not found');
+          new Function(match[1]);
+          NODE
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
